@@ -1,0 +1,90 @@
+import { initializeApp, getApps } from 'firebase/app';
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+};
+
+export const firebaseEnabled = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
+
+let app = null;
+let auth = null;
+
+if (firebaseEnabled && !getApps().length) {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+}
+
+export function getStoredUser() {
+  const saved = localStorage.getItem('pak-animal-market-user');
+  return saved ? JSON.parse(saved) : null;
+}
+
+export async function signUpWithEmail(email, password, name, city, phone) {
+  if (!firebaseEnabled) {
+    const user = {
+      uid: 'demo-user',
+      email,
+      displayName: name || email.split('@')[0],
+      city: city || 'Lahore',
+      phone: phone || '+92 300 0000000',
+      role: 'buyer',
+    };
+    localStorage.setItem('pak-animal-market-user', JSON.stringify(user));
+    return { user };
+  }
+
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  return userCredential;
+}
+
+export async function loginWithEmail(email, password) {
+  if (!firebaseEnabled) {
+    const user = {
+      uid: 'demo-user',
+      email,
+      displayName: email.split('@')[0],
+      city: 'Lahore',
+      phone: '+92 300 0000000',
+      role: 'buyer',
+    };
+    localStorage.setItem('pak-animal-market-user', JSON.stringify(user));
+    return { user };
+  }
+
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return userCredential;
+}
+
+export async function logoutUser() {
+  if (!firebaseEnabled) {
+    localStorage.removeItem('pak-animal-market-user');
+    return;
+  }
+
+  await signOut(auth);
+}
+
+export function subscribeAuth(callback) {
+  if (!firebaseEnabled) {
+    const stored = getStoredUser();
+    callback(stored || null);
+    return () => {};
+  }
+
+  return onAuthStateChanged(auth, callback);
+}
+
+export { app, auth };
+
